@@ -26,6 +26,27 @@ export function normalise(text: string): string {
     .trim();
 }
 
+/**
+ * Check if phraseTokens appear as a CONSECUTIVE run of whole tokens in textTokens.
+ */
+export function matchesPhrase(textTokens: string[], phraseTokens: string[]): boolean {
+  if (phraseTokens.length === 0 || textTokens.length < phraseTokens.length) {
+    return false;
+  }
+  const maxStart = textTokens.length - phraseTokens.length;
+  for (let i = 0; i <= maxStart; i++) {
+    let match = true;
+    for (let j = 0; j < phraseTokens.length; j++) {
+      if (textTokens[i + j] !== phraseTokens[j]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return true;
+  }
+  return false;
+}
+
 export function score(text: string): ScoreResult {
   const normText = normalise(text);
   const matched: string[] = [];
@@ -41,12 +62,14 @@ export function score(text: string): ScoreResult {
     };
   }
 
+  const textTokens = normText.split(" ");
+
   for (const stage of STAGES) {
     let stageTriggered = false;
 
     for (const phrase of stage.phrases) {
       const normPhrase = normalise(phrase);
-      if (normPhrase && normText.includes(normPhrase)) {
+      if (normPhrase && matchesPhrase(textTokens, normPhrase.split(" "))) {
         matched.push(phrase);
         stageTriggered = true;
       }
