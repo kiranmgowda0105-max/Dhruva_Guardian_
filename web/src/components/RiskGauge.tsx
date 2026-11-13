@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 interface RiskGaugeProps {
   score: number;
@@ -7,16 +7,35 @@ interface RiskGaugeProps {
 
 export const RiskGauge: React.FC<RiskGaugeProps> = ({ score, level }) => {
   const clampedScore = Math.min(Math.max(score, 0), 100);
-  const radius = 75;
-  const arcLength = Math.PI * radius; // ~235.619
+  const radius = 70;
+  const arcLength = 1.5 * Math.PI * radius; // ~329.867 (270-degree arc)
   const strokeOffset = arcLength * (1 - clampedScore / 100);
 
-  const levelColor =
-    level === "red"
-      ? "var(--danger)"
-      : level === "yellow"
-      ? "var(--warn)"
-      : "var(--safe)";
+  // Animated count-up score number in centre
+  const [animatedScore, setAnimatedScore] = useState(clampedScore);
+
+  useEffect(() => {
+    let startVal = animatedScore;
+    const endVal = clampedScore;
+    if (startVal === endVal) return;
+
+    const startTime = performance.now();
+    const duration = 350;
+    let rafId: number;
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setAnimatedScore(Math.round(startVal + (endVal - startVal) * ease));
+      if (progress < 1) {
+        rafId = requestAnimationFrame(step);
+      }
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [clampedScore]);
 
   const levelLabel =
     level === "red"
@@ -25,72 +44,76 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({ score, level }) => {
       ? "SUSPICIOUS"
       : "SAFE";
 
-  const levelExplanation =
-    level === "red"
-      ? "Digital-arrest script detected - hang up now"
-      : level === "yellow"
-      ? "Parts of a scam script heard - stay alert"
-      : "No scam pattern detected";
-
   return (
-    <div className="risk-gauge-card-content">
-      <div className="gauge-svg-wrapper">
+    <div className={`cyber-gauge-container ${level === "red" ? "gauge-alert-pulse" : ""}`}>
+      <div className="gauge-radial-wrap">
         <svg
-          viewBox="0 0 200 120"
-          className="gauge-svg"
+          viewBox="0 0 200 175"
+          className="cyber-gauge-svg"
           aria-hidden="true"
         >
-          {/* Background track */}
+          <defs>
+            <linearGradient id="gaugeArcGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="var(--level)" stopOpacity="0.75" />
+              <stop offset="100%" stopColor="var(--level)" stopOpacity="1" />
+            </linearGradient>
+            <filter id="gaugeGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Background track (270-degree arc) */}
           <path
-            d="M 25 105 A 75 75 0 0 1 175 105"
+            d="M 50.5 149.5 A 70 70 0 1 1 149.5 149.5"
             fill="none"
-            stroke="var(--border)"
-            strokeWidth="14"
+            stroke="rgba(255, 255, 255, 0.08)"
+            strokeWidth="12"
             strokeLinecap="round"
           />
 
           {/* Animated fill arc */}
           <path
-            d="M 25 105 A 75 75 0 0 1 175 105"
+            d="M 50.5 149.5 A 70 70 0 1 1 149.5 149.5"
             fill="none"
-            stroke={levelColor}
-            strokeWidth="14"
+            stroke="url(#gaugeArcGrad)"
+            strokeWidth="12"
             strokeLinecap="round"
             strokeDasharray={arcLength}
             strokeDashoffset={strokeOffset}
-            className="gauge-fill-arc"
+            filter="url(#gaugeGlow)"
+            className="gauge-arc-fill"
           />
 
           {/* Centre score number */}
           <text
             x="100"
-            y="82"
+            y="94"
             textAnchor="middle"
-            className="gauge-score-value"
+            className="gauge-score-number"
           >
-            {clampedScore}
+            {animatedScore}
           </text>
           <text
             x="100"
-            y="100"
+            y="114"
             textAnchor="middle"
-            className="gauge-score-sub"
+            className="gauge-score-caption"
           >
-            OUT OF 100
+            RISK SCORE / 100
           </text>
         </svg>
       </div>
 
-      <div className="gauge-chip-row">
-        <span className={`gauge-level-chip gauge-chip-${level}`}>
-          <span className="gauge-chip-dot" />
+      <div className="gauge-badge-row">
+        <span className={`cyber-level-chip chip-${level}`}>
+          <span className="chip-glowing-dot" />
           {levelLabel}
         </span>
       </div>
-
-      <p className="gauge-explanation-text">
-        {levelExplanation}
-      </p>
     </div>
   );
 };

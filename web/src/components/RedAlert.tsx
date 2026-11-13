@@ -12,13 +12,13 @@ export const RedAlert: React.FC<RedAlertProps> = ({
   matched = [],
 }) => {
   const dismissBtnRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    // Remember previously focused element to return focus on close
-    previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
+    // Save previous active element to restore focus on close
+    previousActiveElement.current = document.activeElement as HTMLElement | null;
 
-    // Auto-focus Dismiss button on mount
+    // Focus Dismiss button on mount
     dismissBtnRef.current?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -29,12 +29,10 @@ export const RedAlert: React.FC<RedAlertProps> = ({
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      // Return focus to previously focused element
-      if (previouslyFocusedElementRef.current && typeof previouslyFocusedElementRef.current.focus === "function") {
-        previouslyFocusedElementRef.current.focus();
+      if (previousActiveElement.current && typeof previousActiveElement.current.focus === "function") {
+        previousActiveElement.current.focus();
       }
     };
   }, [onDismiss]);
@@ -47,14 +45,18 @@ export const RedAlert: React.FC<RedAlertProps> = ({
       aria-labelledby="red-alert-title"
       aria-describedby="red-alert-subtitle"
     >
-      <div className="red-alert-card">
+      {/* Rotating Siren Light Sweep */}
+      <div className="red-alert-siren-sweep" aria-hidden="true" />
+
+      <div className="red-alert-modal-card">
         {/* Pulsing Warning Icon */}
-        <div className="red-alert-icon-wrap" aria-hidden="true">
-          <div className="red-alert-pulse" />
-          <div className="red-alert-icon-core">
+        <div className="red-alert-icon-orb" aria-hidden="true">
+          <div className="red-alert-ripple-ring ring-1" />
+          <div className="red-alert-ripple-ring ring-2" />
+          <div className="red-alert-icon-inner">
             <svg
-              width="36"
-              height="36"
+              width="42"
+              height="42"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -69,20 +71,20 @@ export const RedAlert: React.FC<RedAlertProps> = ({
           </div>
         </div>
 
-        <h1 id="red-alert-title" className="red-alert-title">
+        <h1 id="red-alert-title" className="red-alert-hero-title">
           There is no &quot;digital arrest&quot; in Indian law.
         </h1>
 
-        <p id="red-alert-subtitle" className="red-alert-subtitle">
+        <p id="red-alert-subtitle" className="red-alert-hero-subtitle">
           Real police never arrest anyone on a video call or ask for money. Hang up now.
         </p>
 
         {matched && matched.length > 0 && (
-          <div className="red-alert-we-heard">
-            <span className="red-alert-we-heard-label">We heard:</span>
-            <div className="red-alert-chips">
+          <div className="red-alert-detected-section">
+            <span className="red-alert-detected-label">We heard:</span>
+            <div className="red-alert-glowing-chips">
               {matched.map((phrase, idx) => (
-                <span key={idx} className="red-alert-outline-chip">
+                <span key={idx} className="red-alert-glow-chip">
                   &ldquo;{phrase}&rdquo;
                 </span>
               ))}
@@ -90,10 +92,10 @@ export const RedAlert: React.FC<RedAlertProps> = ({
           </div>
         )}
 
-        <div className="red-alert-actions">
+        <div className="red-alert-button-row">
           <a
             href="tel:1930"
-            className="red-alert-btn red-alert-btn-call"
+            className="btn-overlay btn-overlay-call"
             title="Immediately call National Cyber Crime Helpline 1930"
           >
             <svg
@@ -114,7 +116,7 @@ export const RedAlert: React.FC<RedAlertProps> = ({
 
           <button
             type="button"
-            className="red-alert-btn red-alert-btn-pdf"
+            className="btn-overlay btn-overlay-pdf"
             onClick={onDownloadPdf}
             title="Download Cyber Crime Evidence PDF"
           >
@@ -141,7 +143,7 @@ export const RedAlert: React.FC<RedAlertProps> = ({
           <button
             type="button"
             ref={dismissBtnRef}
-            className="red-alert-btn red-alert-btn-dismiss"
+            className="btn-overlay btn-overlay-dismiss"
             onClick={onDismiss}
             title="Dismiss Alert"
           >

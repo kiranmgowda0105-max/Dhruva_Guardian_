@@ -12,7 +12,7 @@ interface UseSpeechListenerOptions {
   paused?: boolean;
 }
 
-interface UseSpeechListenerReturn {
+export interface UseSpeechListenerReturn {
   transcript: string;
   interim: string;
   listening: boolean;
@@ -20,6 +20,7 @@ interface UseSpeechListenerReturn {
   error: string | null;
   start: () => void;
   stop: () => void;
+  clearTranscript: () => void;
 }
 
 const ROLLING_WINDOW_MS = 60 * 1000; // 60 seconds
@@ -37,12 +38,12 @@ export function useSpeechListener(
 
   // Refs for state accessed inside event callbacks
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const isListeningRef = useRef<boolean>(false);
+  const wantListening = useRef<boolean>(false);
   const isPausedRef = useRef<boolean>(paused);
   const restartTimerRef = useRef<number | null>(null);
+  const pruneIntervalRef = useRef<number | null>(null);
   const currentLangRef = useRef<SpeechLanguage>(language);
 
-  isListeningRef.current = listening;
   isPausedRef.current = paused;
   currentLangRef.current = language;
 
@@ -56,19 +57,6 @@ export function useSpeechListener(
     }
   }, []);
 
-  // Periodic pruning of segments older than 60 seconds
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      const now = Date.now();
-      setSegments((prev) => {
-        const filtered = prev.filter((seg) => now - seg.ts <= ROLLING_WINDOW_MS);
-        return filtered.length === prev.length ? prev : filtered;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(interval);
-  }, []);
-
   const clearRestartTimer = useCallback(() => {
     if (restartTimerRef.current !== null) {
       window.clearTimeout(restartTimerRef.current);
@@ -76,19 +64,43 @@ export function useSpeechListener(
     }
   }, []);
 
+  const clearPruneInterval = useCallback(() => {
+    if (pruneIntervalRef.current !== null) {
+      window.clearInterval(pruneIntervalRef.current);
+      pruneIntervalRef.current = null;
+    }
+  }, []);
+
+  const startPruning = useCallback(() => {
+    clearPruneInterval();
+    pruneIntervalRef.current = window.setInterval(() => {
+      if (!wantListening.current) return;
+      const now = Date.now();
+      setSegments((prev) => {
+        const filtered = prev.filter((seg) => now - seg.ts <= ROLLING_WINDOW_MS);
+        return filtered.length === prev.length ? prev : filtered;
+      });
+    }, 1000);
+  }, [clearPruneInterval]);
+
   // Safe start of recognition instance
   const safeStart = useCallback(() => {
     clearRestartTimer();
     const SpeechClass =
       window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechClass || isPausedRef.current || !isListeningRef.current) {
+    if (!SpeechClass || isPausedRef.current || !wantListening.current) {
       return;
     }
 
-    // Clean up previous instance if any
+    // Clean up previous instance completely before creating a new one
     if (recognitionRef.current) {
+      const prev = recognitionRef.current;
+      prev.onstart = null;
+      prev.onresult = null;
+      prev.onerror = null;
+      prev.onend = null;
       try {
-        recognitionRef.current.abort();
+        prev.abort();
       } catch {
         // ignore
       }
@@ -102,11 +114,20 @@ export function useSpeechListener(
       recognition.lang = currentLangRef.current;
 
       recognition.onstart = () => {
+        if (!wantListening.current) {
+          try {
+            recognition.abort();
+          } catch {
+            // ignore
+          }
+          return;
+        }
         setError(null);
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        if (isPausedRef.current) {
+        // Drop any late result immediately if monitoring was stopped or paused
+        if (!wantListening.current || isPausedRef.current) {
           return;
         }
 
@@ -127,7 +148,7 @@ export function useSpeechListener(
           }
         }
 
-        if (newFinalSegments.length > 0) {
+        if (newFinalSegments.length > 0 && wantListening.current) {
           setSegments((prev) => {
             const cutoff = Date.now() - ROLLING_WINDOW_MS;
             const updated = [...prev, ...newFinalSegments].filter(
@@ -137,20 +158,22 @@ export function useSpeechListener(
           });
         }
 
-        setInterim(interimAccumulator);
+        if (wantListening.current) {
+          setInterim(interimAccumulator);
+        }
       };
 
       recognition.onerror = (ev: SpeechRecognitionErrorEvent) => {
+        if (!wantListening.current) return;
         const errType = ev.error;
         if (errType === "no-speech") {
-          // Normal idle condition; don't report as critical error
           return;
         }
 
         if (errType === "not-allowed") {
           setError("Microphone permission denied. Please allow microphone access in your browser.");
+          wantListening.current = false;
           setListening(false);
-          isListeningRef.current = false;
           return;
         }
 
@@ -164,11 +187,13 @@ export function useSpeechListener(
 
       recognition.onend = () => {
         setInterim("");
-        // Automatically restart if user still wants to listen and not paused
-        if (isListeningRef.current && !isPausedRef.current) {
+        // Automatically restart ONLY if wantListening is true and not paused
+        if (wantListening.current && !isPausedRef.current) {
           clearRestartTimer();
           restartTimerRef.current = window.setTimeout(() => {
-            safeStart();
+            if (wantListening.current) {
+              safeStart();
+            }
           }, 300);
         }
       };
@@ -176,7 +201,9 @@ export function useSpeechListener(
       recognitionRef.current = recognition;
       recognition.start();
     } catch (err: any) {
-      setError(`Failed to start recognition: ${err.message || err}`);
+      if (wantListening.current) {
+        setError(`Failed to start recognition: ${err.message || err}`);
+      }
     }
   }, [clearRestartTimer]);
 
@@ -188,25 +215,42 @@ export function useSpeechListener(
       return;
     }
     setError(null);
+    wantListening.current = true;
     setListening(true);
-    isListeningRef.current = true;
+    startPruning();
     safeStart();
-  }, [safeStart]);
+  }, [safeStart, startPruning]);
 
   const stop = useCallback(() => {
+    // 1. Set wantListening false FIRST so no new/pending events are accepted
+    wantListening.current = false;
     clearRestartTimer();
-    setListening(false);
-    isListeningRef.current = false;
-    setInterim("");
+    clearPruneInterval();
+
+    // 2. Tear down active recognition instance immediately
     if (recognitionRef.current) {
+      const rec = recognitionRef.current;
+      rec.onstart = null;
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.onend = null; // null onend handler so it does not auto-restart
       try {
-        recognitionRef.current.stop();
+        rec.abort(); // call abort() instead of stop()
       } catch {
         // ignore
       }
       recognitionRef.current = null;
     }
-  }, [clearRestartTimer]);
+
+    setListening(false);
+    setInterim("");
+    setSegments([]); // clear live transcript text
+  }, [clearRestartTimer, clearPruneInterval]);
+
+  const clearTranscript = useCallback(() => {
+    setSegments([]);
+    setInterim("");
+  }, []);
 
   // Handle paused flag change
   useEffect(() => {
@@ -214,21 +258,23 @@ export function useSpeechListener(
       clearRestartTimer();
       setInterim("");
       if (recognitionRef.current) {
+        const rec = recognitionRef.current;
+        rec.onend = null;
         try {
-          recognitionRef.current.stop();
+          rec.abort();
         } catch {
           // ignore
         }
         recognitionRef.current = null;
       }
-    } else if (isListeningRef.current) {
+    } else if (wantListening.current) {
       safeStart();
     }
   }, [paused, clearRestartTimer, safeStart]);
 
   // Handle language switch: restart recognition if actively listening
   useEffect(() => {
-    if (isListeningRef.current && !paused) {
+    if (wantListening.current && !paused) {
       safeStart();
     }
   }, [language, paused, safeStart]);
@@ -236,17 +282,24 @@ export function useSpeechListener(
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      wantListening.current = false;
       clearRestartTimer();
+      clearPruneInterval();
       if (recognitionRef.current) {
+        const rec = recognitionRef.current;
+        rec.onstart = null;
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
         try {
-          recognitionRef.current.abort();
+          rec.abort();
         } catch {
           // ignore
         }
         recognitionRef.current = null;
       }
     };
-  }, [clearRestartTimer]);
+  }, [clearRestartTimer, clearPruneInterval]);
 
   // Compute concatenated rolling 60-second transcript
   const transcript = segments.map((s) => s.text).join(" ");
@@ -259,5 +312,6 @@ export function useSpeechListener(
     error,
     start,
     stop,
+    clearTranscript,
   };
 }
