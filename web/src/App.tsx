@@ -229,6 +229,12 @@ export default function App() {
       return;
     }
 
+    // A simulated alert manages itself (handleFakeRed / handleDismiss).
+    // Without this, the real-transcript check below cancels it immediately.
+    if (fakeRedActive) {
+      return;
+    }
+
     if (scored.level !== "red") {
       setDismissed(false);
       setFakeRedActive(false);
