@@ -1,0 +1,478 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  color: #1f2937;
+  background-color: #f9fafb;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.container {
+  width: 100%;
+  max-width: 760px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.header {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 1rem;
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.chrome-note {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #4b5563;
+  background-color: #f3f4f6;
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+}
+
+.banner {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.error-banner {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: white;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.btn-start {
+  background-color: #2563eb;
+  color: white;
+}
+
+.btn-start:hover {
+  background-color: #1d4ed8;
+}
+
+.btn-stop {
+  background-color: #dc2626;
+  color: white;
+}
+
+.btn-stop:hover {
+  background-color: #b91c1c;
+}
+
+.btn-fake-red {
+  background-color: #991b1b;
+  color: white;
+}
+
+.btn-fake-red:hover {
+  background-color: #7f1d1d;
+}
+
+.btn:disabled, .select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-indicator {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.status-indicator.active {
+  color: #16a34a;
+}
+
+.status-indicator.idle {
+  color: #6b7280;
+}
+
+.backend-status-line {
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+  color: #4b5563;
+}
+
+.backend-badge {
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.backend-badge.sent {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.backend-badge.failed {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Risk Meter Section */
+.risk-meter-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.risk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.risk-header h2 {
+  font-size: 1.15rem;
+  color: #1e293b;
+}
+
+.level-pill {
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.level-green {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.level-yellow {
+  background-color: #fef9c3;
+  color: #a16207;
+}
+
+.level-red {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.meter-track {
+  width: 100%;
+  height: 14px;
+  background: #e2e8f0;
+  border-radius: 7px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.meter-bar {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.meter-green {
+  background-color: #16a34a;
+}
+
+.meter-yellow {
+  background-color: #eab308;
+}
+
+.meter-red {
+  background-color: #dc2626;
+}
+
+.risk-details {
+  font-size: 0.95rem;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin: 0.15rem 0.3rem 0.15rem 0;
+}
+
+.stage-tag {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  font-weight: 600;
+}
+
+.match-tag {
+  background-color: #fee2e2;
+  color: #991b1b;
+  font-family: monospace;
+}
+
+.text-muted {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Transcript Section */
+.transcript-section h2 {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+.transcript-box {
+  min-height: 160px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: #fafafa;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.final-text {
+  color: #111827;
+}
+
+.interim-text {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.placeholder-text {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Red Alert Full-Screen Overlay */
+.red-alert-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(185, 28, 28, 0.97);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 2rem;
+  animation: pulse-bg 2s infinite ease-in-out;
+}
+
+@keyframes pulse-bg {
+  0% {
+    background-color: rgba(185, 28, 28, 0.97);
+  }
+  50% {
+    background-color: rgba(153, 27, 27, 0.99);
+  }
+  100% {
+    background-color: rgba(185, 28, 28, 0.97);
+  }
+}
+
+.red-alert-content {
+  background: #ffffff;
+  color: #111827;
+  max-width: 640px;
+  width: 100%;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 4px solid #dc2626;
+}
+
+.red-alert-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.red-alert-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #b91c1c;
+  line-height: 1.2;
+  margin-bottom: 1.25rem;
+}
+
+.red-alert-desc {
+  font-size: 1.15rem;
+  color: #4b5563;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+.red-alert-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.btn-call-1930 {
+  display: inline-block;
+  background-color: #dc2626;
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 800;
+  padding: 0.85rem 2.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.4);
+  transition: background-color 0.15s ease-in-out, transform 0.1s ease;
+}
+
+.btn-call-1930:hover {
+  background-color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.btn-download-pdf {
+  display: inline-block;
+  background-color: #1e40af;
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.btn-download-pdf:hover {
+  background-color: #1e3a8a;
+}
+
+.red-alert-dismiss-btn {
+  background-color: #6b7280;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.65rem 2rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.red-alert-dismiss-btn:hover {
+  background-color: #4b5563;
+}
+
+/* Emergency action bar on main screen */
+.emergency-actions-bar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.btn-call-1930-inline {
+  background-color: #dc2626;
+  color: white;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  display: inline-block;
+  transition: background-color 0.15s ease;
+}
+
+.btn-call-1930-inline:hover {
+  background-color: #b91c1c;
+}
+
+.btn-download-pdf-inline {
+  background-color: #2563eb;
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-download-pdf-inline:hover {
+  background-color: #1d4ed8;
+}

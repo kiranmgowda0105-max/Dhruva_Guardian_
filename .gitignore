@@ -1,0 +1,12 @@
+.env
+node_modules/
+__pycache__/
+.venv/
+dist/
+build/
+.gradle/
+*.log
+.DS_Store
+api/pairings.json
+api/events.json
+
