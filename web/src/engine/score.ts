@@ -72,4 +72,3 @@ export function score(text: string): ScoreResult {
     matched,
   };
 }
-

@@ -248,7 +248,7 @@ fun AlertScreen(
                 }
 
                 Text(
-                    text = "Real police, judges, CBI, and banks NEVER demand money transfers to \"safe accounts\", conduct trials over video calls, or order \"digital arrest\". Hang up immediately.",
+                    text = "There is no 'digital arrest' in Indian law. Real police, CBI, ED, RBI and courts NEVER arrest anyone on a video call or ask you to move money. Hang up now.",
                     fontSize = 15.sp,
                     color = Color.White.copy(alpha = 0.95f),
                     textAlign = TextAlign.Center,
