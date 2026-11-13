@@ -10,3 +10,11 @@ build/
 api/pairings.json
 api/events.json
 
+
+.idea/
+**/.idea/
+local.properties
+*.apk
+api/events.json
+api/pairings.json
+__pycache__/
