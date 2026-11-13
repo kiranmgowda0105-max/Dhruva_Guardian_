@@ -1,0 +1,1 @@
+Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Set-Location $PSScriptRoot; python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
