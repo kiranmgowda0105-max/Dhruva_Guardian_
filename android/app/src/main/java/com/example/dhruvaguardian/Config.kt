@@ -1,14 +1,27 @@
 package com.example.dhruvaguardian
 
+import android.content.Context
+
 /**
  * Shared configuration and constants for Dhruva Guardian.
  */
 const val TAG = "DhruvaGuardian"
 const val BACKEND_BASE_URL = "http://192.168.145.21:8000"
+const val KEY_BACKEND_URL = "backend_url"
 const val ENABLE_PAYMENT_BLOCK = false
 const val FAMILY_CODE = "DEMO01"
 const val PREFS_NAME = "dhruva_guardian_prefs"
 const val KEY_LAST_SHOWN_ALERT_ID = "last_shown_alert_id"
+
+/**
+ * Returns the configured backend URL from SharedPreferences, trimmed and without trailing "/",
+ * or BACKEND_BASE_URL if not configured or empty.
+ */
+fun backendUrl(context: Context): String {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val saved = prefs.getString(KEY_BACKEND_URL, "")?.trim()?.trimEnd('/') ?: ""
+    return if (saved.isNotEmpty()) saved else BACKEND_BASE_URL
+}
 
 // Notification Channels & IDs
 const val CHANNEL_ID_SERVICE = "dhruva_guardian_service_channel"
@@ -47,4 +60,3 @@ const val PAYMENT_BLOCK_COOLDOWN_MS = 3000L
  */
 @Volatile
 var isActivityVisible: Boolean = false
-

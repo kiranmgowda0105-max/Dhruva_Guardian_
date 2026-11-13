@@ -13,10 +13,10 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({ score, level }) => {
 
   const levelColor =
     level === "red"
-      ? "#dc2626"
+      ? "var(--danger)"
       : level === "yellow"
-      ? "#d97706"
-      : "#16a34a";
+      ? "var(--warn)"
+      : "var(--safe)";
 
   const levelLabel =
     level === "red"
@@ -25,8 +25,15 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({ score, level }) => {
       ? "SUSPICIOUS"
       : "SAFE";
 
+  const levelExplanation =
+    level === "red"
+      ? "Digital-arrest script detected - hang up now"
+      : level === "yellow"
+      ? "Parts of a scam script heard - stay alert"
+      : "No scam pattern detected";
+
   return (
-    <div className="risk-gauge-container">
+    <div className="risk-gauge-card-content">
       <div className="gauge-svg-wrapper">
         <svg
           viewBox="0 0 200 120"
@@ -37,7 +44,7 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({ score, level }) => {
           <path
             d="M 25 105 A 75 75 0 0 1 175 105"
             fill="none"
-            stroke="#e2e8f0"
+            stroke="var(--border)"
             strokeWidth="14"
             strokeLinecap="round"
           />
@@ -51,38 +58,39 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({ score, level }) => {
             strokeLinecap="round"
             strokeDasharray={arcLength}
             strokeDashoffset={strokeOffset}
-            style={{
-              transition: "stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease",
-            }}
+            className="gauge-fill-arc"
           />
 
-          {/* Center score */}
+          {/* Centre score number */}
           <text
             x="100"
             y="82"
             textAnchor="middle"
-            className="gauge-score-text"
+            className="gauge-score-value"
           >
             {clampedScore}
           </text>
           <text
             x="100"
-            y="102"
+            y="100"
             textAnchor="middle"
-            className="gauge-sub-text"
+            className="gauge-score-sub"
           >
             OUT OF 100
           </text>
         </svg>
       </div>
 
-      <div className="gauge-status-row">
-        <span className={`gauge-status-pill gauge-status-${level}`}>
-          <span className="gauge-status-dot" />
+      <div className="gauge-chip-row">
+        <span className={`gauge-level-chip gauge-chip-${level}`}>
+          <span className="gauge-chip-dot" />
           {levelLabel}
         </span>
       </div>
+
+      <p className="gauge-explanation-text">
+        {levelExplanation}
+      </p>
     </div>
   );
 };
-

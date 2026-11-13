@@ -5,7 +5,6 @@ import { sendEvent } from "./lib/api";
 import { RedAlert } from "./components/RedAlert";
 import { RiskGauge } from "./components/RiskGauge";
 import { ScamTimeline } from "./components/ScamTimeline";
-import { MatchedPhrases } from "./components/MatchedPhrases";
 import { speakWarning, stopWarning } from "./lib/voice";
 import { buildEvidencePdf, EvidenceData } from "./lib/evidence";
 
@@ -22,9 +21,10 @@ function renderHighlightedTranscript(text: string, phrases: string[]) {
     .sort((a, b) => b.length - a.length);
 
   if (validPhrases.length === 0) {
-    return <span className="transcript-final">{text}</span>;
+    return <span className="transcript-final-text">{text}</span>;
   }
 
+  // Safe escape for regex special characters (handles Devanagari/Kannada properly)
   const escaped = validPhrases
     .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("|");
@@ -33,14 +33,14 @@ function renderHighlightedTranscript(text: string, phrases: string[]) {
     const regex = new RegExp(`(${escaped})`, "gi");
     const tokens = text.split(regex);
     return (
-      <span className="transcript-final">
+      <span className="transcript-final-text">
         {tokens.map((token, i) => {
           const isHit = validPhrases.some(
             (vp) => vp.toLowerCase() === token.toLowerCase()
           );
           if (isHit) {
             return (
-              <mark key={i} className="transcript-highlight">
+              <mark key={i} className="transcript-danger-highlight">
                 {token}
               </mark>
             );
@@ -50,29 +50,60 @@ function renderHighlightedTranscript(text: string, phrases: string[]) {
       </span>
     );
   } catch {
-    return <span className="transcript-final">{text}</span>;
+    return <span className="transcript-final-text">{text}</span>;
   }
 }
 
 export default function App() {
   const [language, setLanguage] = useState<SpeechLanguage>("en-IN");
-  const { transcript, interim, listening, supported, error, start, stop } =
-    useSpeechListener({ language });
+  const listener = useSpeechListener({ language });
+  const { transcript, interim, listening, supported, error, start, stop } = listener;
 
-  // Track call start time for evidence generation
+  // Track start time for call evidence
   const startedAtRef = useRef<number>(Date.now());
 
+  // Call timer state (seconds)
+  const [callSeconds, setCallSeconds] = useState<number>(0);
+
   useEffect(() => {
+    let interval: number | null = null;
     if (listening) {
       startedAtRef.current = Date.now();
+      interval = window.setInterval(() => {
+        setCallSeconds((s) => s + 1);
+      }, 1000);
     }
+    return () => {
+      if (interval !== null) clearInterval(interval);
+    };
   }, [listening]);
+
+  const formatTimer = (totalSecs: number) => {
+    const m = Math.floor(totalSecs / 60)
+      .toString()
+      .padStart(2, "0");
+    const s = (totalSecs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  // Reset tracking snapshot
+  const [lastResetTranscript, setLastResetTranscript] = useState<string>("");
+
+  // Scoring input: use scoringText if provided by listener, else transcript
+  const rawScoringText =
+    ("scoringText" in listener && (listener as any).scoringText) || transcript;
+
+  // Effective text (cleared if Reset was pressed and no new speech has arrived)
+  const activeTranscript =
+    transcript === lastResetTranscript ? "" : transcript;
+  const activeScoringInput =
+    rawScoringText === lastResetTranscript ? "" : rawScoringText;
 
   // Voice warning toggle (on by default)
   const [voiceWarningEnabled, setVoiceWarningEnabled] = useState<boolean>(true);
 
-  // Compute live score from transcript
-  const scored = useMemo(() => score(transcript), [transcript]);
+  // Compute live score from scoring input
+  const scored = useMemo(() => score(activeScoringInput), [activeScoringInput]);
 
   const highestStage = useMemo(() => {
     return scored.stagesHit.length > 0 ? Math.max(...scored.stagesHit) : 0;
@@ -107,12 +138,12 @@ export default function App() {
   // Transcript auto-scroll ref
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll transcript container
+  // Auto-scroll transcript container on new text
   useEffect(() => {
     if (transcriptEndRef.current) {
       transcriptEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [transcript, interim]);
+  }, [activeTranscript, interim]);
 
   // Poll backend health every 5s
   useEffect(() => {
@@ -131,10 +162,10 @@ export default function App() {
     };
 
     checkHealth();
-    const interval = setInterval(checkHealth, 5000);
+    const interval = window.setInterval(checkHealth, 5000);
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      window.clearInterval(interval);
     };
   }, []);
 
@@ -162,14 +193,14 @@ export default function App() {
     };
 
     checkTelegram();
-    const interval = setInterval(checkTelegram, 15000);
+    const interval = window.setInterval(checkTelegram, 15000);
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      window.clearInterval(interval);
     };
   }, []);
 
-  // Track the last sent metrics for sendEvent
+  // Track last sent metrics for sendEvent
   const lastSentLevelRef = useRef<"green" | "yellow" | "red">("green");
   const lastSentScoreRef = useRef<number>(0);
   const lastSentStageRef = useRef<number>(0);
@@ -186,7 +217,7 @@ export default function App() {
 
   // Manage overlay dismissal lifecycle and voice warnings:
   // 1. Initial transition to red -> speak warning once
-  // 2. Reset state when the score drops below red
+  // 2. Reset state when score drops below red
   // 3. Re-show overlay if a NEW stage is hit (highest stage increases) while level is red -> speak warning
   useEffect(() => {
     if (scored.level !== "red") {
@@ -314,6 +345,21 @@ export default function App() {
     }
   };
 
+  const handleReset = () => {
+    stop();
+    stopWarning();
+    setCallSeconds(0);
+    setDismissed(false);
+    setFakeRedActive(false);
+    setLastResetTranscript(transcript);
+    wasRedRef.current = false;
+    lastDismissedStageRef.current = 0;
+    lastSentScoreRef.current = 0;
+    lastSentStageRef.current = 0;
+    lastSentLevelRef.current = "green";
+    startedAtRef.current = Date.now();
+  };
+
   const handleFakeRed = async () => {
     setDismissed(false);
     setFakeRedActive(true);
@@ -383,8 +429,8 @@ export default function App() {
     : scored.matched;
 
   return (
-    <div className="app-root">
-      {/* Full-Screen Red Alert Overlay */}
+    <div className="product-layout">
+      {/* Red Alert Overlay */}
       {showRedAlert && (
         <RedAlert
           onDismiss={handleDismiss}
@@ -393,160 +439,223 @@ export default function App() {
         />
       )}
 
-      {/* Header Bar */}
-      <header className="app-header">
-        <div className="header-brand">
-          <div className="brand-logo-wrapper">
-            <svg
-              className="brand-shield-svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
-          </div>
-          <div className="brand-text">
-            <h1 className="brand-name">Dhruva</h1>
-            <span className="brand-subtitle">Digital-Arrest Call Guardian</span>
-          </div>
-        </div>
-
-        {/* Status Pills */}
-        <div className="header-status-pills">
-          {/* 1. Listening Pill */}
-          <div
-            className={`status-pill ${
-              listening ? "pill-listening" : "pill-idle"
-            }`}
-            title={listening ? "Microphone listening in real-time" : "Microphone inactive"}
-          >
-            <span
-              className={`pill-dot ${
-                listening ? "dot-pulsing-green" : "dot-grey"
-              }`}
-            />
-            <span className="pill-text">
-              {listening ? "Listening" : "Idle"}
-            </span>
-          </div>
-
-          {/* 2. Backend Health & Transmission Pill */}
-          <div
-            className={`status-pill ${
-              backendConnected === true
-                ? "pill-connected"
-                : backendConnected === false
-                ? "pill-offline"
-                : "pill-checking"
-            }`}
-            title="Backend server connectivity status"
-          >
-            <span
-              className={`pill-dot ${
-                backendConnected === true
-                  ? "dot-green"
-                  : backendConnected === false
-                  ? "dot-red"
-                  : "dot-yellow"
-              }`}
-            />
-            <span className="pill-text">
-              {backendConnected === true
-                ? "Backend Connected"
-                : backendConnected === false
-                ? "Backend Offline"
-                : "Backend Checking..."}
-              {backendStatus ? ` (${backendStatus})` : ""}
-            </span>
-          </div>
-
-          {/* 3. Telegram Family Alerts Pill (hidden if endpoint fails) */}
-          {telegramBotActive !== null && (
-            <div
-              className={`status-pill ${
-                telegramBotActive ? "pill-telegram-on" : "pill-telegram-off"
-              }`}
-              title="Telegram Guardian Bot status"
-            >
+      {/* 1. Sticky Top Bar */}
+      <header className="top-bar">
+        <div className="top-bar-container">
+          <div className="brand-group">
+            <div className="brand-shield" aria-hidden="true">
               <svg
-                width="14"
-                height="14"
+                width="22"
+                height="22"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="2.4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                aria-hidden="true"
-                style={{ marginRight: 6 }}
               >
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
               </svg>
+            </div>
+            <div className="brand-titles">
+              <span className="brand-name">Dhruva</span>
+              <span className="brand-subtitle">Digital-Arrest Call Guardian</span>
+            </div>
+          </div>
+
+          {/* Right Status Pills */}
+          <div className="status-pills-row">
+            {/* Listening Pill */}
+            <div
+              className={`status-pill ${
+                listening ? "pill-live" : "pill-idle"
+              }`}
+              title={listening ? "Speech analysis is live" : "Microphone is idle"}
+            >
+              <span
+                className={`status-dot ${
+                  listening ? "dot-pulsing-green" : "dot-grey"
+                }`}
+                aria-hidden="true"
+              />
+              <span className="pill-text">{listening ? "Live" : "Idle"}</span>
+            </div>
+
+            {/* Backend Pill */}
+            <div
+              className={`status-pill ${
+                backendConnected === true
+                  ? "pill-backend-online"
+                  : backendConnected === false
+                  ? "pill-backend-offline"
+                  : "pill-backend-checking"
+              }`}
+              title="Backend API connectivity status"
+            >
+              <span
+                className={`status-dot ${
+                  backendConnected === true
+                    ? "dot-green"
+                    : backendConnected === false
+                    ? "dot-red"
+                    : "dot-amber"
+                }`}
+                aria-hidden="true"
+              />
               <span className="pill-text">
-                {telegramBotActive ? "Telegram on" : "Telegram off"}
+                {backendConnected === true
+                  ? "Backend online"
+                  : backendConnected === false
+                  ? "Backend offline"
+                  : "Backend checking..."}
+                {backendStatus === "sent"
+                  ? " · Alert sent"
+                  : backendStatus === "failed"
+                  ? " · Send failed"
+                  : ""}
               </span>
             </div>
-          )}
+
+            {/* Telegram Family Alerts Pill */}
+            {telegramBotActive !== null && (
+              <div
+                className={`status-pill ${
+                  telegramBotActive ? "pill-telegram-on" : "pill-telegram-off"
+                }`}
+                title="Family Guardian Telegram Bot"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ marginRight: 5 }}
+                  aria-hidden="true"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+                <span className="pill-text">
+                  {telegramBotActive ? "Telegram on" : "Telegram off"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Main 2-Column Responsive Dashboard */}
-      <main className="dashboard-grid">
-        {/* LEFT COLUMN */}
-        <div className="dashboard-column left-column">
-          {/* 1. Controls Card */}
-          <section className="dashboard-card controls-card">
-            <div className="card-header">
-              <h2 className="card-title">Live Call Monitoring</h2>
-              <span className="card-tag">Control Center</span>
-            </div>
+      {/* 2. Hero Strip */}
+      <aside className="hero-strip" aria-label="Legal Fact Reminder">
+        <div className="hero-strip-container">
+          <svg
+            className="hero-info-icon"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <span className="hero-strip-text">
+            Real police, CBI, ED or courts never arrest anyone on a video call or ask for money.
+          </span>
+        </div>
+      </aside>
 
-            {/* Error or browser support warnings */}
-            {!supported && (
-              <div className="card-inline-banner banner-danger">
-                <strong>Browser Not Supported:</strong> Web Speech API is required. Please open this demo in Google Chrome.
+      {/* 3. Main 12-Column Grid */}
+      <main className="main-content-wrapper">
+        <div className="grid-container">
+          {/* LEFT COLUMN (5 of 12) */}
+          <div className="left-column">
+            {/* Card a: Call Monitor */}
+            <section className="product-card card-call-monitor">
+              <div className="card-header">
+                <h2 className="card-title">Call monitor</h2>
+                {listening && (
+                  <div className="call-live-indicator">
+                    <span className="timer-badge">{formatTimer(callSeconds)}</span>
+                    <div className="mic-audio-level" aria-hidden="true">
+                      <span className="bar bar-1" />
+                      <span className="bar bar-2" />
+                      <span className="bar bar-3" />
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
 
-            {error && (
-              <div className="card-inline-banner banner-warning">
-                <strong>Audio Warning:</strong> {error}
-              </div>
-            )}
-
-            <div className="controls-body">
-              <div className="control-group">
-                <label htmlFor="language-select" className="control-label">
-                  Call Audio Language
-                </label>
-                <select
-                  id="language-select"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value as SpeechLanguage)}
-                  className="control-select"
-                  disabled={!supported}
-                >
-                  <option value="kn-IN">Kannada (kn-IN)</option>
-                  <option value="hi-IN">Hindi (hi-IN)</option>
-                  <option value="en-IN">English (en-IN)</option>
-                </select>
-              </div>
-
-              <div className="control-switch-row">
-                <div className="switch-info">
-                  <span className="switch-title">Spoken Voice Warning</span>
-                  <span className="switch-desc">
-                    Audibly warns senior victim on Red Scam Alert
-                  </span>
+              {/* Inline Browser Support / Error Alerts */}
+              {!supported && (
+                <div className="inline-alert alert-danger" role="alert">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>Web Speech API is unsupported. Please open this page in Google Chrome.</span>
                 </div>
-                <label className="switch-toggle" title="Toggle audio spoken alert">
+              )}
+
+              {error && (
+                <div className="inline-alert alert-danger" role="alert">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Language Segmented Control */}
+              <div className="control-field">
+                <span className="field-label">Speech language</span>
+                <div className="segmented-control" role="group" aria-label="Speech Recognition Language">
+                  <button
+                    type="button"
+                    className={`segment-btn ${language === "kn-IN" ? "active" : ""}`}
+                    onClick={() => setLanguage("kn-IN")}
+                    disabled={!supported}
+                  >
+                    Kannada
+                  </button>
+                  <button
+                    type="button"
+                    className={`segment-btn ${language === "hi-IN" ? "active" : ""}`}
+                    onClick={() => setLanguage("hi-IN")}
+                    disabled={!supported}
+                  >
+                    Hindi
+                  </button>
+                  <button
+                    type="button"
+                    className={`segment-btn ${language === "en-IN" ? "active" : ""}`}
+                    onClick={() => setLanguage("en-IN")}
+                    disabled={!supported}
+                  >
+                    English
+                  </button>
+                </div>
+              </div>
+
+              {/* Voice Warning Switch */}
+              <div className="switch-row">
+                <div className="switch-label-group">
+                  <span className="switch-title">Voice warning</span>
+                  <span className="switch-desc">Speaks warning alert to victim on Red scam detection</span>
+                </div>
+                <label className="switch-control" aria-label="Toggle audible voice warning">
                   <input
                     type="checkbox"
                     checked={voiceWarningEnabled}
@@ -556,186 +665,237 @@ export default function App() {
                 </label>
               </div>
 
-              <div className="action-buttons-group">
+              {/* Actions Button Group */}
+              <div className="monitor-actions">
                 <button
                   type="button"
                   onClick={handleToggle}
                   disabled={!supported}
-                  className={`btn-primary-action ${
-                    listening ? "btn-listening-stop" : "btn-listening-start"
-                  }`}
+                  className={`btn ${listening ? "btn-danger" : "btn-primary"} btn-monitor-toggle`}
                 >
-                  {listening ? (
-                    <>
-                      <span className="btn-icon">⏹</span>
-                      Stop Listening
-                    </>
-                  ) : (
-                    <>
-                      <span className="btn-icon">▶</span>
-                      Start Listening
-                    </>
-                  )}
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    {listening ? (
+                      <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+                    ) : (
+                      <>
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="22" />
+                      </>
+                    )}
+                  </svg>
+                  {listening ? "Stop monitoring" : "Start monitoring"}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleFakeRed}
-                  className="btn-fake-red-trigger"
-                  title="Simulate Red Alert for live demo presentation"
-                >
-                  <span className="btn-icon">🚨</span>
-                  Simulate scam (Fake RED)
-                </button>
+                <div className="monitor-secondary-row">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="btn btn-ghost btn-reset"
+                    title="Reset monitoring session and score"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                    </svg>
+                    Reset
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleFakeRed}
+                    className="btn btn-outline btn-fake-red"
+                    title="Simulate Red Alert for demo testing"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    Simulate scam alert
+                  </button>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* 2. Risk Gauge Card */}
-          <section className="dashboard-card gauge-card">
-            <div className="card-header">
-              <h2 className="card-title">Real-Time Risk Gauge</h2>
-              <span className="card-tag">Scam Assessment</span>
-            </div>
-            <div className="card-body">
+            {/* Card b: Risk Level */}
+            <section className="product-card card-risk-level">
+              <div className="card-header">
+                <h2 className="card-title">Risk level</h2>
+              </div>
               <RiskGauge score={displayScore} level={displayLevel} />
-            </div>
-          </section>
+            </section>
 
-          {/* 3. Scam Script Timeline Card */}
-          <section className="dashboard-card timeline-card">
-            <div className="card-header">
-              <h2 className="card-title">Scam Script Progression</h2>
-              <span className="card-tag">5-Stage Analysis</span>
-            </div>
-            <div className="card-body">
+            {/* Card c: Scam Script */}
+            <section className="product-card card-scam-script">
+              <div className="card-header">
+                <h2 className="card-title">Scam script</h2>
+                <span className="card-header-badge">5 Stages</span>
+              </div>
               <ScamTimeline
                 stagesHit={displayStagesHit}
                 level={displayLevel}
+                matched={displayMatched}
               />
-            </div>
-          </section>
-        </div>
+            </section>
+          </div>
 
-        {/* RIGHT COLUMN */}
-        <div className="dashboard-column right-column">
-          {/* 4. Live Transcript Card */}
-          <section className="dashboard-card transcript-card">
-            <div className="card-header">
-              <div className="transcript-title-box">
-                <h2 className="card-title">Live Rolling Transcript</h2>
-                <span className="card-tag">60s Sliding Window</span>
+          {/* RIGHT COLUMN (7 of 12) */}
+          <div className="right-column">
+            {/* Card d: Live Transcript */}
+            <section className="product-card card-transcript">
+              <div className="card-header">
+                <div className="transcript-head-info">
+                  <h2 className="card-title">Live transcript</h2>
+                  <span className="card-subtitle-tag">Rolling 60s window</span>
+                </div>
+                <div className="transcript-status-dot-wrap">
+                  <span
+                    className={`status-dot ${listening ? "dot-pulsing-green" : "dot-grey"}`}
+                    aria-hidden="true"
+                  />
+                  <span className="transcript-live-label">
+                    {listening ? "Actively capturing speech" : "Standby"}
+                  </span>
+                </div>
               </div>
-              <div className="transcript-live-pill">
-                <span className={`pill-dot ${listening ? "dot-pulsing-green" : "dot-grey"}`} />
-                {listening ? "Transcribing live" : "Standby"}
-              </div>
-            </div>
 
-            <div className="transcript-card-body">
-              <div className="transcript-scroll-box" tabIndex={0} aria-label="Speech Transcript">
-                {transcript && renderHighlightedTranscript(transcript, displayMatched)}
-                {interim && (
-                  <span className="transcript-interim"> {interim}</span>
-                )}
-                {!transcript && !interim && (
-                  <div className="transcript-placeholder-state">
-                    <p className="placeholder-primary">
-                      {listening
-                        ? "Listening... Audio from the phone speaker will appear here."
-                        : 'Microphone idle. Click "Start Listening" or "Simulate scam (Fake RED)" to begin.'}
+              <div className="transcript-scroll-area" tabIndex={0} aria-label="Speech transcript">
+                {activeTranscript && renderHighlightedTranscript(activeTranscript, displayMatched)}
+                {interim && <span className="transcript-interim-text"> {interim}</span>}
+
+                {!activeTranscript && !interim && (
+                  <div className="transcript-empty-state">
+                    <div className="empty-mic-icon-wrap" aria-hidden="true">
+                      <svg
+                        width="44"
+                        height="44"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="var(--muted)"
+                        strokeWidth="1.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="22" />
+                      </svg>
+                    </div>
+                    <p className="empty-state-title">
+                      Start monitoring and put the call on speaker near this device.
                     </p>
-                    <span className="placeholder-secondary">
-                      Highlighted words in red represent identified scam tactics.
-                    </span>
+                    <p className="empty-state-sub">
+                      Speech will be analyzed in real time. Identified scam tactics will appear highlighted in red.
+                    </p>
                   </div>
                 )}
                 <div ref={transcriptEndRef} />
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* 5. Matched Phrases Card */}
-          <section className="dashboard-card matched-card">
-            <div className="card-header">
-              <h2 className="card-title">Detected Scam Signals</h2>
-              <span className="card-tag">Identified Triggers</span>
-            </div>
-            <div className="card-body">
-              <MatchedPhrases matched={displayMatched} />
-            </div>
-          </section>
+            {/* Card e: If this is a scam */}
+            <section className="product-card card-emergency-actions">
+              <div className="card-header">
+                <h2 className="card-title">If this is a scam</h2>
+              </div>
+              <div className="emergency-actions-body">
+                <div className="emergency-buttons-row">
+                  <a
+                    href="tel:1930"
+                    className="btn btn-danger btn-large-action"
+                    title="Directly dial Cyber Crime Helpline 1930"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                    Call 1930
+                  </a>
 
-          {/* 6. Emergency Card */}
-          <section className="dashboard-card emergency-card">
-            <div className="card-header">
-              <h2 className="card-title">Emergency Help & Legal Protections</h2>
-              <span className="emergency-alert-tag">Immediate Action</span>
-            </div>
-            <div className="card-body">
-              <div className="emergency-legal-banner">
-                <div className="banner-icon">⚖️</div>
-                <div className="banner-text">
-                  <strong>There is no &quot;digital arrest&quot; in Indian law.</strong>
-                  <p>
-                    Law enforcement never arrests anyone over video calls or demands money transfers to
-                    &ldquo;safe accounts&rdquo;.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    className="btn btn-outline btn-large-action"
+                    title="Generate and download 1930 Evidence PDF"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    Download evidence PDF
+                  </button>
+                </div>
+
+                <div className="emergency-footer-note">
+                  <span className="report-link-text">
+                    Report at <a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer">cybercrime.gov.in</a>
+                  </span>
                 </div>
               </div>
-
-              <div className="emergency-buttons-row">
-                <a
-                  href="tel:1930"
-                  className="btn-emergency-action btn-call-1930-large"
-                  title="Directly dial Cyber Crime Helpline 1930"
-                >
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                  </svg>
-                  Call 1930 Helpline
-                </a>
-
-                <button
-                  type="button"
-                  className="btn-emergency-action btn-download-pdf-large"
-                  onClick={handleDownloadPdf}
-                  title="Generate and download 1930 Cyber Fraud Evidence PDF"
-                >
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                  Download Evidence PDF
-                </button>
-              </div>
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       </main>
+
+      {/* 4. Footer */}
+      <footer className="product-footer">
+        <p className="footer-note">
+          Dhruva · No audio is stored · Built at hackathon by Team Stellar
+        </p>
+      </footer>
     </div>
   );
 }

@@ -359,7 +359,8 @@ class GuardianService : Service() {
     private fun pollAlert(): JSONObject? {
         var connection: HttpURLConnection? = null
         return try {
-            val url = URL("$BACKEND_BASE_URL/poll?code=$FAMILY_CODE")
+            val baseUrl = backendUrl(this)
+            val url = URL("$baseUrl/poll?code=$FAMILY_CODE")
             connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 3000

@@ -12,40 +12,55 @@ export const RedAlert: React.FC<RedAlertProps> = ({
   matched = [],
 }) => {
   const dismissBtnRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    // Auto-focus the dismiss button on mount for quick keyboard dismissal
+    // Remember previously focused element to return focus on close
+    previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    // Auto-focus Dismiss button on mount
     dismissBtnRef.current?.focus();
 
-    // Dismiss with Escape key
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         onDismiss();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      // Return focus to previously focused element
+      if (previouslyFocusedElementRef.current && typeof previouslyFocusedElementRef.current.focus === "function") {
+        previouslyFocusedElementRef.current.focus();
+      }
     };
   }, [onDismiss]);
 
   return (
-    <div className="red-alert-overlay" role="alertdialog" aria-modal="true" aria-labelledby="red-alert-title">
+    <div
+      className="red-alert-overlay"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="red-alert-title"
+      aria-describedby="red-alert-subtitle"
+    >
       <div className="red-alert-card">
-        {/* Pulsing warning icon */}
-        <div className="red-alert-icon-container">
-          <div className="red-alert-pulse-ring" />
-          <div className="red-alert-icon-badge">
+        {/* Pulsing Warning Icon */}
+        <div className="red-alert-icon-wrap" aria-hidden="true">
+          <div className="red-alert-pulse" />
+          <div className="red-alert-icon-core">
             <svg
-              className="red-alert-icon-svg"
+              width="36"
+              height="36"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              aria-hidden="true"
             >
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" />
@@ -57,16 +72,17 @@ export const RedAlert: React.FC<RedAlertProps> = ({
         <h1 id="red-alert-title" className="red-alert-title">
           There is no &quot;digital arrest&quot; in Indian law.
         </h1>
-        <p className="red-alert-subtitle">
+
+        <p id="red-alert-subtitle" className="red-alert-subtitle">
           Real police never arrest anyone on a video call or ask for money. Hang up now.
         </p>
 
         {matched && matched.length > 0 && (
-          <div className="red-alert-matched-section">
-            <span className="red-alert-matched-label">Scam Triggers Detected</span>
+          <div className="red-alert-we-heard">
+            <span className="red-alert-we-heard-label">We heard:</span>
             <div className="red-alert-chips">
               {matched.map((phrase, idx) => (
-                <span key={idx} className="red-alert-chip">
+                <span key={idx} className="red-alert-outline-chip">
                   &ldquo;{phrase}&rdquo;
                 </span>
               ))}
@@ -81,8 +97,8 @@ export const RedAlert: React.FC<RedAlertProps> = ({
             title="Immediately call National Cyber Crime Helpline 1930"
           >
             <svg
-              width="22"
-              height="22"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -103,8 +119,8 @@ export const RedAlert: React.FC<RedAlertProps> = ({
             title="Download Cyber Crime Evidence PDF"
           >
             <svg
-              width="22"
-              height="22"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -119,7 +135,7 @@ export const RedAlert: React.FC<RedAlertProps> = ({
               <line x1="16" y1="17" x2="8" y2="17" />
               <polyline points="10 9 9 9 8 9" />
             </svg>
-            Download Evidence PDF
+            Download evidence PDF
           </button>
 
           <button
@@ -127,7 +143,7 @@ export const RedAlert: React.FC<RedAlertProps> = ({
             ref={dismissBtnRef}
             className="red-alert-btn red-alert-btn-dismiss"
             onClick={onDismiss}
-            title="Dismiss overlay"
+            title="Dismiss Alert"
           >
             Dismiss
           </button>

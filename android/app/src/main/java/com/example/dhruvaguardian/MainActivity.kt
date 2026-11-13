@@ -14,7 +14,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,7 +61,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "MainActivity created. Base URL: $BACKEND_BASE_URL, Family Code: $FAMILY_CODE")
+        Log.d(TAG, "MainActivity created. Base URL: ${backendUrl(this)}, Family Code: $FAMILY_CODE")
         checkAndRequestPermissionsAndStartService()
         setContent {
             MaterialTheme {
@@ -161,6 +163,9 @@ fun DhruvaGuardianApp(
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
 
     var connectionStatus by remember { mutableStateOf("Connecting...") }
+    var currentHost by remember { mutableStateOf(backendUrl(context)) }
+    var serverUrlInput by remember { mutableStateOf(currentHost) }
+
     var hasOverlayPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var hasPhonePermissions by remember {
         mutableStateOf(
@@ -191,11 +196,12 @@ fun DhruvaGuardianApp(
                 )
                 hasAccessibilityPermission = isAccessibilityServiceEnabled(context)
                 protectedUntilMillis = prefs.getLong(KEY_PROTECTED_UNTIL, 0L)
+                currentHost = backendUrl(context)
                 Log.d(
                     TAG,
                     "MainActivity onResume: canDrawOverlays=$hasOverlayPermission, " +
                     "hasPhonePermissions=$hasPhonePermissions, hasAccessibilityPermission=$hasAccessibilityPermission, " +
-                    "protectedUntil=$protectedUntilMillis"
+                    "protectedUntil=$protectedUntilMillis, currentHost=$currentHost"
                 )
             }
         }
@@ -215,13 +221,13 @@ fun DhruvaGuardianApp(
         Log.d(TAG, "Starting polling loop (interval = 2000ms)... Initial lastShownAlertId='$lastShownAlertId'")
         while (isActive) {
             try {
-                // 1. Connection check (/health)
-                val isHealthy = withContext(Dispatchers.IO) { checkHealth() }
+                // 1. Connection check (/health) using fresh backendUrl(context)
+                val isHealthy = withContext(Dispatchers.IO) { checkHealth(context) }
                 if (isHealthy) {
                     connectionStatus = "Connected"
 
                     // 2. Poll alert level for FAMILY_CODE (/poll)
-                    val pollResult = withContext(Dispatchers.IO) { pollAlert() }
+                    val pollResult = withContext(Dispatchers.IO) { pollAlert(context) }
                     val currentLevel = pollResult.optString("level", "green")
                     val alertId = pollResult.optString("id", "")
                     val matched = pollResult.optString("matched", "")
@@ -266,6 +272,34 @@ fun DhruvaGuardianApp(
         }
     }
 
+    val onSaveServerUrl = {
+        val trimmed = serverUrlInput.trim().trimEnd('/')
+        val toSave = if (trimmed.isNotEmpty()) trimmed else BACKEND_BASE_URL
+        prefs.edit().putString(KEY_BACKEND_URL, toSave).apply()
+        val updated = backendUrl(context)
+        currentHost = updated
+        serverUrlInput = updated
+        Log.d(TAG, "Saved custom backend URL: $updated")
+        coroutineScope.launch {
+            connectionStatus = "Connecting..."
+            val isHealthy = withContext(Dispatchers.IO) { checkHealth(context) }
+            connectionStatus = if (isHealthy) "Connected" else "Disconnected"
+        }
+    }
+
+    val onResetServerUrl = {
+        prefs.edit().remove(KEY_BACKEND_URL).apply()
+        val defaultUrl = BACKEND_BASE_URL
+        currentHost = defaultUrl
+        serverUrlInput = defaultUrl
+        Log.d(TAG, "Reset backend URL to default: $defaultUrl")
+        coroutineScope.launch {
+            connectionStatus = "Connecting..."
+            val isHealthy = withContext(Dispatchers.IO) { checkHealth(context) }
+            connectionStatus = if (isHealthy) "Connected" else "Disconnected"
+        }
+    }
+
     val showRedOverlay = isRedAlert && !dismissed
 
     if (showRedOverlay) {
@@ -288,7 +322,7 @@ fun DhruvaGuardianApp(
                 }
                 // Optional: clear/acknowledge on backend as well
                 coroutineScope.launch(Dispatchers.IO) {
-                    dismissBackendAlert()
+                    dismissBackendAlert(context)
                 }
             }
         )
@@ -296,6 +330,11 @@ fun DhruvaGuardianApp(
         // Main Guardian Screen
         MainGuardianScreen(
             connectionStatus = connectionStatus,
+            currentHost = currentHost,
+            serverUrlInput = serverUrlInput,
+            onServerUrlChange = { serverUrlInput = it },
+            onSaveServerUrl = { onSaveServerUrl() },
+            onResetServerUrl = { onResetServerUrl() },
             hasOverlayPermission = hasOverlayPermission,
             hasPhonePermissions = hasPhonePermissions,
             hasAccessibilityPermission = hasAccessibilityPermission,
@@ -324,7 +363,7 @@ fun DhruvaGuardianApp(
                     alertDetails = "safe account, tell no one"
                     withContext(Dispatchers.IO) {
                         try {
-                            sendFakeRedEvent()
+                            sendFakeRedEvent(context)
                         } catch (e: Exception) {
                             Log.e(TAG, "Failed to send fake RED event to backend", e)
                         }
@@ -354,6 +393,11 @@ private fun isAccessibilityServiceEnabled(context: Context): Boolean {
 @Composable
 fun MainGuardianScreen(
     connectionStatus: String,
+    currentHost: String,
+    serverUrlInput: String,
+    onServerUrlChange: (String) -> Unit,
+    onSaveServerUrl: () -> Unit,
+    onResetServerUrl: () -> Unit,
     hasOverlayPermission: Boolean,
     hasPhonePermissions: Boolean,
     hasAccessibilityPermission: Boolean,
@@ -367,6 +411,7 @@ fun MainGuardianScreen(
     val now = System.currentTimeMillis()
     val isProtected = now < protectedUntilMillis
     val remainingMin = if (isProtected) ((protectedUntilMillis - now) / 60000L) + 1 else 0L
+    val scrollState = rememberScrollState()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -375,12 +420,13 @@ fun MainGuardianScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Dhruva Guardian",
                     fontSize = 28.sp,
@@ -461,10 +507,61 @@ fun MainGuardianScreen(
                             color = Color.DarkGray
                         )
                         Text(
-                            text = "Host: $BACKEND_BASE_URL",
+                            text = "Host: $currentHost",
                             fontSize = 11.sp,
                             color = Color.Gray
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Server URL Runtime Configuration Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+                        Text(
+                            text = "Server Configuration",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = serverUrlInput,
+                            onValueChange = onServerUrlChange,
+                            label = { Text("Server URL") },
+                            placeholder = { Text(BACKEND_BASE_URL) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onSaveServerUrl,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Save")
+                            }
+                            OutlinedButton(
+                                onClick = onResetServerUrl,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Reset to default")
+                            }
+                        }
                     }
                 }
 
@@ -561,6 +658,8 @@ fun MainGuardianScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Action Buttons
             Column(
@@ -738,10 +837,11 @@ fun RedAlertScreen(
 
 // HTTP Helper Functions using standard HttpURLConnection
 
-private fun checkHealth(): Boolean {
+private fun checkHealth(context: Context): Boolean {
     var connection: HttpURLConnection? = null
     return try {
-        val url = URL("$BACKEND_BASE_URL/health")
+        val baseUrl = backendUrl(context)
+        val url = URL("$baseUrl/health")
         connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 3000
@@ -768,11 +868,12 @@ private fun checkHealth(): Boolean {
     }
 }
 
-private fun pollAlert(): JSONObject {
+private fun pollAlert(context: Context): JSONObject {
     var connection: HttpURLConnection? = null
     val result = JSONObject()
     try {
-        val url = URL("$BACKEND_BASE_URL/poll?code=$FAMILY_CODE")
+        val baseUrl = backendUrl(context)
+        val url = URL("$baseUrl/poll?code=$FAMILY_CODE")
         Log.d(TAG, "pollAlert: sending request to $url")
         connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
@@ -824,10 +925,11 @@ private fun pollAlert(): JSONObject {
     return result
 }
 
-private fun dismissBackendAlert(): Boolean {
+private fun dismissBackendAlert(context: Context): Boolean {
     var connection: HttpURLConnection? = null
     return try {
-        val url = URL("$BACKEND_BASE_URL/dismiss?code=$FAMILY_CODE")
+        val baseUrl = backendUrl(context)
+        val url = URL("$baseUrl/dismiss?code=$FAMILY_CODE")
         Log.d(TAG, "dismissBackendAlert: sending POST to $url")
         connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
@@ -846,10 +948,11 @@ private fun dismissBackendAlert(): Boolean {
     }
 }
 
-private fun sendFakeRedEvent(): Boolean {
+private fun sendFakeRedEvent(context: Context): Boolean {
     var connection: HttpURLConnection? = null
     return try {
-        val url = URL("$BACKEND_BASE_URL/event")
+        val baseUrl = backendUrl(context)
+        val url = URL("$baseUrl/event")
         Log.d(TAG, "sendFakeRedEvent: sending POST to $url")
         connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
