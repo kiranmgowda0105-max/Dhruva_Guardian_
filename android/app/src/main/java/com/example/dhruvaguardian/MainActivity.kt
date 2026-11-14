@@ -13,6 +13,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -413,30 +416,39 @@ fun MainGuardianScreen(
     val remainingMin = if (isProtected) ((protectedUntilMillis - now) / 60000L) + 1 else 0L
     val scrollState = rememberScrollState()
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF070B1F),
+                        Color(0xFF0F172A),
+                        Color(0xFF042F2E)
+                    )
+                )
+            )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(24.dp),
+                .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "Dhruva Guardian",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = Color.White
                 )
                 Text(
-                    text = "Real-time scam call protector",
+                    text = "Listens for scam phrases during calls",
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = Color.White.copy(alpha = 0.70f)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -444,10 +456,15 @@ fun MainGuardianScreen(
                 // Protected mode active banner if on
                 if (isProtected) {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.40f)),
+                                RoundedCornerShape(20.dp)
+                            ),
+                        shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFFFF3E0)
+                            containerColor = Color(0xFFF59E0B).copy(alpha = 0.16f)
                         )
                     ) {
                         Row(
@@ -458,140 +475,186 @@ fun MainGuardianScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "🛡️ Protected Mode Active",
+                                text = "Protected mode active",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFE65100)
+                                color = Color(0xFFFBBF24)
                             )
                             Text(
-                                text = "~$remainingMin min left",
+                                text = "$remainingMin minutes left",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFE65100)
+                                color = Color(0xFFFBBF24)
                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                // Connection status card
+                // Connection status card (Glass card with status tint and glow)
+                val isConn = connectionStatus == "Connected"
+                val connTint = if (isConn) Color(0xFF22C55E).copy(alpha = 0.18f) else Color(0xFFEF4444).copy(alpha = 0.18f)
+                val connStroke = if (isConn) Color(0xFF22C55E).copy(alpha = 0.45f) else Color(0xFFEF4444).copy(alpha = 0.45f)
+                val connTextColor = if (isConn) Color(0xFF4ADE80) else Color(0xFFF87171)
+
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (connectionStatus == "Connected") Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-                    )
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(BorderStroke(1.dp, connStroke), RoundedCornerShape(20.dp)),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = connTint)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Connection Status",
+                            text = "Connection status",
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.70f)
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = connectionStatus,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (connectionStatus == "Connected") Color(0xFF2E7D32) else Color(0xFFC62828)
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = connTextColor
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Family Code: $FAMILY_CODE",
-                            fontSize = 12.sp,
-                            color = Color.DarkGray
+                            text = "Family code: $FAMILY_CODE",
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = "Host: $currentHost",
                             fontSize = 11.sp,
-                            color = Color.Gray
+                            color = Color.White.copy(alpha = 0.60f)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Server URL Runtime Configuration Card
+                // Server URL Runtime Configuration Card (Glass Card)
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                            RoundedCornerShape(20.dp)
+                        ),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.12f))
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp)
+                            .padding(16.dp)
                     ) {
                         Text(
-                            text = "Server Configuration",
+                            text = "Server configuration",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color.White.copy(alpha = 0.90f)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = serverUrlInput,
                             onValueChange = onServerUrlChange,
                             label = { Text("Server URL") },
-                            placeholder = { Text(BACKEND_BASE_URL) },
+                            placeholder = { Text(BACKEND_BASE_URL, color = Color.White.copy(alpha = 0.5f)) },
                             singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFF14B8A6),
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.30f),
+                                focusedLabelColor = Color(0xFF14B8A6),
+                                unfocusedLabelColor = Color.White.copy(alpha = 0.70f),
+                                cursorColor = Color(0xFF14B8A6)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Button(
                                 onClick = onSaveServerUrl,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp)
+                                    .border(
+                                        BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
+                                        RoundedCornerShape(14.dp)
+                                    ),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6)),
+                                shape = RoundedCornerShape(14.dp)
                             ) {
-                                Text("Save")
+                                Text("Save", fontWeight = FontWeight.Bold, color = Color.White)
                             }
                             OutlinedButton(
                                 onClick = onResetServerUrl,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp)
+                                    .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                                    .border(
+                                        BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                        RoundedCornerShape(14.dp)
+                                    ),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                shape = RoundedCornerShape(14.dp)
                             ) {
-                                Text("Reset to default")
+                                Text("Reset to default", color = Color.White.copy(alpha = 0.90f), fontSize = 12.sp)
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Display over other apps permission status card
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            BorderStroke(
+                                1.dp,
+                                (if (hasOverlayPermission) Color(0xFF22C55E) else Color(0xFFF59E0B)).copy(alpha = 0.35f)
+                            ),
+                            RoundedCornerShape(18.dp)
+                        ),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (hasOverlayPermission) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                        containerColor = (if (hasOverlayPermission) Color(0xFF22C55E) else Color(0xFFF59E0B)).copy(alpha = 0.12f)
                     )
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Display Over Other Apps",
+                            text = "Display over other apps",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
                         )
                         Text(
-                            text = if (hasOverlayPermission) "Granted" else "Not Granted",
+                            text = if (hasOverlayPermission) "Granted" else "Not granted",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (hasOverlayPermission) Color(0xFF2E7D32) else Color(0xFFE65100)
+                            color = if (hasOverlayPermission) Color(0xFF4ADE80) else Color(0xFFFBBF24)
                         )
                     }
                 }
@@ -600,29 +663,38 @@ fun MainGuardianScreen(
 
                 // Call interception permission status card
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            BorderStroke(
+                                1.dp,
+                                (if (hasPhonePermissions) Color(0xFF22C55E) else Color(0xFFF59E0B)).copy(alpha = 0.35f)
+                            ),
+                            RoundedCornerShape(18.dp)
+                        ),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (hasPhonePermissions) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                        containerColor = (if (hasPhonePermissions) Color(0xFF22C55E) else Color(0xFFF59E0B)).copy(alpha = 0.12f)
                     )
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Call Disconnect Permission",
+                            text = "Call disconnect permission",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
                         )
                         Text(
-                            text = if (hasPhonePermissions) "Granted" else "Not Granted",
+                            text = if (hasPhonePermissions) "Granted" else "Not granted",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (hasPhonePermissions) Color(0xFF2E7D32) else Color(0xFFE65100)
+                            color = if (hasPhonePermissions) Color(0xFF4ADE80) else Color(0xFFFBBF24)
                         )
                     }
                 }
@@ -631,52 +703,65 @@ fun MainGuardianScreen(
 
                 // Payment app protection accessibility status card
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            BorderStroke(
+                                1.dp,
+                                (if (hasAccessibilityPermission) Color(0xFF22C55E) else Color(0xFFF59E0B)).copy(alpha = 0.35f)
+                            ),
+                            RoundedCornerShape(18.dp)
+                        ),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (hasAccessibilityPermission) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                        containerColor = (if (hasAccessibilityPermission) Color(0xFF22C55E) else Color(0xFFF59E0B)).copy(alpha = 0.12f)
                     )
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Payment App Blocker",
+                            text = "Payment app blocker",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
                         )
                         Text(
                             text = if (hasAccessibilityPermission) "Active" else "Disabled",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (hasAccessibilityPermission) Color(0xFF2E7D32) else Color(0xFFE65100)
+                            color = if (hasAccessibilityPermission) Color(0xFF4ADE80) else Color(0xFFFBBF24)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Action Buttons
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Button(
                     onClick = onFakeRedClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-                    shape = RoundedCornerShape(8.dp)
+                        .height(50.dp)
+                        .border(
+                            BorderStroke(1.dp, Color.White.copy(alpha = 0.40f)),
+                            RoundedCornerShape(16.dp)
+                        ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626).copy(alpha = 0.88f)),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
-                        text = "🚨 Fake RED",
+                        text = "🚨 Fake red alert",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -688,13 +773,20 @@ fun MainGuardianScreen(
                         onClick = onOpenOverlaySettings,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(44.dp),
-                        shape = RoundedCornerShape(8.dp)
+                            .height(46.dp)
+                            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                            .border(
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                RoundedCornerShape(14.dp)
+                            ),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                     ) {
                         Text(
                             text = "Allow display over other apps",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
                         )
                     }
                 }
@@ -704,13 +796,20 @@ fun MainGuardianScreen(
                         onClick = onOpenAccessibilitySettings,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(44.dp),
-                        shape = RoundedCornerShape(8.dp)
+                            .height(46.dp)
+                            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                            .border(
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                RoundedCornerShape(14.dp)
+                            ),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                     ) {
                         Text(
-                            text = "Enable Payment App Blocker",
+                            text = "Enable payment app blocker",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
                         )
                     }
                 }
@@ -720,13 +819,20 @@ fun MainGuardianScreen(
                         onClick = onRequestPhonePermissions,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(44.dp),
-                        shape = RoundedCornerShape(8.dp)
+                            .height(46.dp)
+                            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                            .border(
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                RoundedCornerShape(14.dp)
+                            ),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                     ) {
                         Text(
-                            text = "Grant Call Permissions",
+                            text = "Grant call permissions",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
                         )
                     }
                 }
@@ -735,13 +841,20 @@ fun MainGuardianScreen(
                     onClick = onCall1930,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(8.dp)
+                        .height(46.dp)
+                        .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                        .border(
+                            BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                            RoundedCornerShape(14.dp)
+                        ),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                 ) {
                     Text(
-                        text = "📞 Call 1930 Helpline",
+                        text = "Call 1930 helpline",
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -759,77 +872,117 @@ fun RedAlertScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFDC2626))
-            .padding(28.dp),
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF5A0C0C),
+                        Color(0xFF2D0505),
+                        Color(0xFF150202)
+                    )
+                )
+            )
+            .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    BorderStroke(1.5.dp, Color(0xFFFECACA).copy(alpha = 0.45f)),
+                    RoundedCornerShape(24.dp)
+                ),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFB91C1C).copy(alpha = 0.35f)
+            )
         ) {
-            Text(
-                text = "⚠️",
-                fontSize = 64.sp
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Possible digital-arrest scam",
-                fontSize = 26.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                lineHeight = 32.sp
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Real police, courts, and banks never make video calls, demand money transfers, or order digital arrest. Hang up immediately.",
-                fontSize = 15.sp,
-                color = Color.White.copy(alpha = 0.95f),
-                textAlign = TextAlign.Center,
-                lineHeight = 22.sp
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(26.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "⚠️",
+                    fontSize = 58.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "Possible digital arrest scam",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 30.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "Real police, courts, and banks never make video calls, demand money transfers, or order digital arrest. Hang up now.",
+                    fontSize = 15.sp,
+                    color = Color.White.copy(alpha = 0.90f),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
+                )
 
-            if (details.isNotEmpty()) {
+                if (details.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.30f)),
+                        border = BorderStroke(1.dp, Color(0xFFFDE047).copy(alpha = 0.40f))
+                    ) {
+                        Text(
+                            text = "Flagged: $details",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFFDE047),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                Button(
+                    onClick = onCall1930,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        text = "Call 1930",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB91C1C)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Flagged: $details",
-                    fontSize = 13.sp,
-                    color = Color.Yellow,
-                    textAlign = TextAlign.Center
-                )
-            }
 
-            Spacer(modifier = Modifier.height(36.dp))
-
-            Button(
-                onClick = onCall1930,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = "📞 Call 1930",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFDC2626)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-            ) {
-                Text(
-                    text = "Dismiss",
-                    fontSize = 16.sp,
-                    color = Color.White.copy(alpha = 0.9f)
-                )
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
+                        .border(
+                            BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
+                            RoundedCornerShape(14.dp)
+                        ),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                ) {
+                    Text(
+                        text = "Dismiss",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
             }
         }
     }

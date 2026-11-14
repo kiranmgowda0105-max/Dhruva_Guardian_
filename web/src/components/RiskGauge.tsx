@@ -39,10 +39,10 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({ score, level }) => {
 
   const levelLabel =
     level === "red"
-      ? "SCAM LIKELY"
+      ? "Scam likely"
       : level === "yellow"
-      ? "SUSPICIOUS"
-      : "SAFE";
+      ? "Suspicious"
+      : "Safe";
 
   return (
     <div className={`cyber-gauge-container ${level === "red" ? "gauge-alert-pulse" : ""}`}>
@@ -103,7 +103,7 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({ score, level }) => {
             textAnchor="middle"
             className="gauge-score-caption"
           >
-            RISK SCORE / 100
+            Risk score / 100
           </text>
         </svg>
       </div>

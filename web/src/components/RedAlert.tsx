@@ -85,7 +85,7 @@ export const RedAlert: React.FC<RedAlertProps> = ({
             <div className="red-alert-glowing-chips">
               {matched.map((phrase, idx) => (
                 <span key={idx} className="red-alert-glow-chip">
-                  &ldquo;{phrase}&rdquo;
+                  "{phrase}"
                 </span>
               ))}
             </div>
@@ -96,7 +96,7 @@ export const RedAlert: React.FC<RedAlertProps> = ({
           <a
             href="tel:1930"
             className="btn-overlay btn-overlay-call"
-            title="Immediately call National Cyber Crime Helpline 1930"
+            title="Call national cyber crime helpline 1930"
           >
             <svg
               width="20"
@@ -118,7 +118,7 @@ export const RedAlert: React.FC<RedAlertProps> = ({
             type="button"
             className="btn-overlay btn-overlay-pdf"
             onClick={onDownloadPdf}
-            title="Download Cyber Crime Evidence PDF"
+            title="Download evidence PDF"
           >
             <svg
               width="20"
@@ -145,7 +145,7 @@ export const RedAlert: React.FC<RedAlertProps> = ({
             ref={dismissBtnRef}
             className="btn-overlay btn-overlay-dismiss"
             onClick={onDismiss}
-            title="Dismiss Alert"
+            title="Dismiss alert"
           >
             Dismiss
           </button>

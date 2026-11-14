@@ -7,4 +7,32 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Glassmorphism Palette -->
+    <color name="bg_navy">#FF070B1F</color>
+    <color name="bg_indigo">#FF1E1B4B</color>
+    <color name="bg_teal">#FF042F2E</color>
+    <color name="glass_white_10">#1AFFFFFF</color>
+    <color name="glass_white_14">#24FFFFFF</color>
+    <color name="glass_white_20">#33FFFFFF</color>
+    <color name="glass_border">#4DFFFFFF</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="text_muted">#80FFFFFF</color>
+
+    <!-- Accents & Status -->
+    <color name="accent_teal">#FF14B8A6</color>
+    <color name="accent_cyan">#FF06B6D4</color>
+    <color name="status_safe_tint">#3322C55E</color>
+    <color name="status_safe_stroke">#8022C55E</color>
+    <color name="status_warn_tint">#3DF59E0B</color>
+    <color name="status_warn_stroke">#80F59E0B</color>
+    <color name="status_danger_tint">#47EF4444</color>
+    <color name="status_danger_stroke">#99EF4444</color>
+
+    <!-- Red Alert Full-Screen -->
+    <color name="red_alert_bg_start">#FF450A0A</color>
+    <color name="red_alert_bg_end">#FF1C0505</color>
+    <color name="red_alert_glass_panel">#59B91C1C</color>
+    <color name="red_alert_glass_border">#80FECACA</color>
 </resources>

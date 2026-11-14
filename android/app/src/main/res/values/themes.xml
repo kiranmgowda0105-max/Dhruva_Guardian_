@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.DhruvaGuardian" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.DhruvaGuardian" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_gradient_navy</item>
+        <item name="android:statusBarColor">#FF070B1F</item>
+        <item name="android:navigationBarColor">#FF042F2E</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
 </resources>

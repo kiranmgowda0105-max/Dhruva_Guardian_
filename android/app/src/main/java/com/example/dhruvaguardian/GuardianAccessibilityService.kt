@@ -78,9 +78,9 @@ class GuardianAccessibilityService : AccessibilityService() {
     }
 
     private fun showPaymentBlockedWarning(blockedPackage: String, remainingMinutes: Long) {
-        val warningMessage = "Payment apps are blocked because a scam call was detected."
-        val reasonDetails = "Attempted to open $blockedPackage while protected mode is active " +
-                "(expires in ~$remainingMinutes min) to prevent unauthorized transfers."
+        val warningMessage = "Dhruva Guardian blocked payment apps after detecting a scam call."
+        val reasonDetails = "Dhruva Guardian blocked $blockedPackage. Protected mode stays active " +
+                "for $remainingMinutes more minutes to stop money transfers."
 
         Log.d(TAG, "GuardianAccessibilityService: Showing warning: '$warningMessage'")
 

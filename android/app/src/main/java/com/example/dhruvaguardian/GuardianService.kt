@@ -136,11 +136,11 @@ class GuardianService : Service() {
                                 )
 
                                 // Step 3: Show the warning
-                                val displayMessage = if (message.isNotBlank()) message else "Possible digital-arrest scam"
+                                val displayMessage = if (message.isNotBlank()) message else "Possible digital arrest scam"
                                 val displayReason = when {
                                     reason.isNotBlank() -> reason
                                     matched.isNotBlank() -> matched
-                                    else -> "Suspicious scam call pattern detected"
+                                    else -> "Possible scam call detected"
                                 }
 
                                 triggerAlert(alertId, displayMessage, displayReason, callEnded, callFailedOrDenied)
@@ -326,8 +326,8 @@ class GuardianService : Service() {
         )
 
         val callNotice = when {
-            callEnded -> "Scam call disconnected automatically."
-            callFailedOrDenied -> "⚠️ HANG UP NOW! End the active call immediately."
+            callEnded -> "Call disconnected."
+            callFailedOrDenied -> "⚠️ Hang up now. End the call."
             else -> ""
         }
 
@@ -337,11 +337,11 @@ class GuardianService : Service() {
         }
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID_ALERTS)
-            .setContentTitle("🚨 SCAM ALERT: $message")
+            .setContentTitle("🚨 Scam alert. $message")
             .setContentText(bodyText)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("SCAM ALERT!\n$bodyText\nReal police never demand money transfers or isolation. Tap to view.")
+                    .bigText("Scam alert\n$bodyText\nReal police never demand money transfers or isolation. Tap to view.")
             )
             .setSmallIcon(android.R.drawable.stat_notify_error)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -397,7 +397,7 @@ class GuardianService : Service() {
                 CHANNEL_NAME_SERVICE,
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Dhruva background protection service indicator"
+                description = "Monitors scam calls in the background"
                 setShowBadge(false)
             }
 
@@ -407,7 +407,7 @@ class GuardianService : Service() {
                 CHANNEL_NAME_ALERTS,
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Urgent alerts when a digital-arrest scam call is detected"
+                description = "Alerts when a digital arrest scam call is detected"
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 500, 250, 500)
                 setShowBadge(true)
@@ -433,7 +433,7 @@ class GuardianService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID_SERVICE)
             .setContentTitle("Dhruva Guardian")
-            .setContentText("Dhruva Guardian is protecting you")
+            .setContentText("Listens for scam phrases during calls")
             .setSmallIcon(android.R.drawable.sym_def_app_icon)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)

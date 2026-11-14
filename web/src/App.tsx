@@ -545,7 +545,7 @@ export default function App() {
           </div>
           <div className="brand-title-group">
             <h1 className="brand-wordmark">Dhruva</h1>
-            <span className="brand-tagline">Digital-Arrest Call Guardian</span>
+            <span className="brand-tagline">Digital arrest call guardian</span>
           </div>
         </div>
 
@@ -554,7 +554,7 @@ export default function App() {
           {/* 1. Live / Idle Pill */}
           <div
             className={`cyber-status-pill ${listening ? "pill-active-live" : "pill-idle"}`}
-            title={listening ? "Audio analysis active" : "Audio capture idle"}
+            title={listening ? "Listening for scam phrases" : "Monitoring is off"}
           >
             <span className={`glowing-dot ${listening ? "dot-pulsing-green" : "dot-grey"}`} />
             <span className="pill-label">{listening ? "Live" : "Idle"}</span>
@@ -600,7 +600,7 @@ export default function App() {
               className={`cyber-status-pill ${
                 telegramBotActive ? "pill-tg-on" : "pill-tg-off"
               }`}
-              title="Family Guardian Telegram alerts"
+              title="Telegram alerts to family"
             >
               <svg
                 width="13"
@@ -642,7 +642,7 @@ export default function App() {
               disabled={!supported}
               className={`listen-orb ${listening ? "orb-listening" : "orb-idle"}`}
               aria-label={listening ? "Stop monitoring" : "Start monitoring"}
-              title={listening ? "Click to Stop monitoring" : "Click to Start monitoring"}
+              title={listening ? "Stop monitoring" : "Start monitoring"}
             >
               {listening && (
                 <>
@@ -680,7 +680,7 @@ export default function App() {
                 {listening ? "Monitoring active" : "Start monitoring"}
               </span>
               <span className="orb-sub-text">
-                {listening ? "Analyzing live speakerphone" : "Click orb to start listener"}
+                {listening ? "Listening through speakerphone" : "Click the circle to start"}
               </span>
             </div>
           </div>
@@ -720,7 +720,7 @@ export default function App() {
           <div className="control-widget toggle-widget-row">
             <div className="toggle-meta">
               <span className="toggle-title">Voice warning</span>
-              <span className="toggle-sub">Speaks alert on Red detection</span>
+              <span className="toggle-sub">Speaks an alert when scam risk is red</span>
             </div>
             <label className="cyber-switch" aria-label="Toggle voice warning">
               <input
@@ -751,7 +751,7 @@ export default function App() {
               type="button"
               onClick={handleFakeRed}
               className="cyber-btn cyber-btn-hotpink"
-              title="Simulate Scam Red Alert"
+              title="Simulate scam red alert"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -770,7 +770,7 @@ export default function App() {
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              <span>{error || "Web Speech API is unsupported in this browser. Please use Chrome."}</span>
+              <span>{error || "This browser does not support speech recognition. Use Chrome."}</span>
             </div>
           )}
         </section>
@@ -778,8 +778,8 @@ export default function App() {
         {/* COLUMN B: RISK (4fr) */}
         <section className="glass-card column-card col-risk animate-card card-delay-2">
           <div className="section-title-bar">
-            <span className="section-title">Risk Analysis</span>
-            <span className="neon-accent-tag">Real-Time Threat</span>
+            <span className="section-title">Risk analysis</span>
+            <span className="neon-accent-tag">Current score</span>
           </div>
 
           {/* 270-degree Radial SVG Gauge */}
@@ -790,8 +790,8 @@ export default function App() {
           {/* Scam Script 5-Stage Compact Stepper */}
           <div className="stepper-zone">
             <div className="stepper-sub-header">
-              <span className="sub-header-title">Scam Script Progression</span>
-              <span className="sub-header-meta">5 Stages</span>
+              <span className="sub-header-title">Scam stages</span>
+              <span className="sub-header-meta">5 stages</span>
             </div>
             <ScamTimeline
               stagesHit={displayStagesHit}
@@ -805,12 +805,12 @@ export default function App() {
         <section className="glass-card column-card col-transcript animate-card card-delay-3">
           <div className="section-title-bar">
             <div className="title-with-pill">
-              <span className="section-title">Live Call</span>
+              <span className="section-title">Live call</span>
               <span className="neon-rolling-pill">Rolling 60s window</span>
             </div>
             <div className="call-ticker-status">
               <span className={`glowing-dot ${listening ? "dot-pulsing-green" : "dot-grey"}`} />
-              <span className="ticker-label">{listening ? "Audio Stream Live" : "Standby"}</span>
+              <span className="ticker-label">{listening ? "Listening" : "Standby"}</span>
             </div>
           </div>
 
@@ -818,7 +818,7 @@ export default function App() {
           <div
             className="cyber-transcript-viewport"
             tabIndex={0}
-            aria-label="Live Speech Transcript"
+            aria-label="Live transcript"
           >
             {activeTranscript && renderHighlightedTranscript(activeTranscript, displayMatched)}
             {interim && (
@@ -839,7 +839,7 @@ export default function App() {
                 </div>
                 <p className="empty-title">Put the call on speaker near this device</p>
                 <p className="empty-sub">
-                  Live voice stream is parsed against digital-arrest patterns without recording audio.
+                  Dhruva Guardian checks speech for digital arrest patterns. Audio is never recorded.
                 </p>
               </div>
             )}
@@ -852,7 +852,7 @@ export default function App() {
               <a
                 href="tel:1930"
                 className="cyber-action-btn btn-call-red"
-                title="Directly dial Cyber Crime Helpline 1930"
+                title="Call national cyber crime helpline 1930"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -864,7 +864,7 @@ export default function App() {
                 type="button"
                 onClick={handleDownloadPdf}
                 className="cyber-action-btn btn-evidence-glass"
-                title="Download 1930 Evidence Pack PDF"
+                title="Download 1930 evidence pack PDF"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />

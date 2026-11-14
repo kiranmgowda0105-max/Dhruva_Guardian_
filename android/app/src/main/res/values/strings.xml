@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Dhruva Guardian</string>
-    <string name="accessibility_service_description">Dhruva Guardian temporarily blocks payment apps (Google Pay, PhonePe, Paytm, BHIM) right after a digital-arrest scam call is detected to protect you from fraudulent transfers.</string>
+    <string name="accessibility_service_description">Dhruva Guardian watches for payment apps (Google Pay, PhonePe, Paytm, BHIM) and blocks them after detecting a scam call to stop money transfers. Turn off this switch at any time to disable protection.</string>
 </resources>

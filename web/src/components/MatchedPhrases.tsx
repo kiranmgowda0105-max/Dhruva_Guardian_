@@ -31,7 +31,7 @@ export const MatchedPhrases: React.FC<MatchedPhrasesProps> = ({ matched }) => {
     const unassigned = matched.filter((p) => !assigned.has(p));
     if (unassigned.length > 0) {
       groups.push({
-        stageLabel: "Detected Scam Signals",
+        stageLabel: "Detected scam signals",
         phrases: Array.from(new Set(unassigned)),
       });
     }
@@ -42,9 +42,8 @@ export const MatchedPhrases: React.FC<MatchedPhrasesProps> = ({ matched }) => {
   if (matched.length === 0) {
     return (
       <div className="matched-empty-state">
-        <div className="matched-empty-icon">🛡️</div>
-        <p className="matched-empty-text">No scam keywords or patterns detected yet.</p>
-        <span className="matched-empty-sub">Speech is continuously analyzed in real-time.</span>
+        <p className="matched-empty-text">No scam keywords detected yet.</p>
+        <span className="matched-empty-sub">Dhruva Guardian checks speech as you talk.</span>
       </div>
     );
   }
@@ -57,7 +56,7 @@ export const MatchedPhrases: React.FC<MatchedPhrasesProps> = ({ matched }) => {
           <div className="matched-chips-list">
             {group.phrases.map((phrase, pIdx) => (
               <span key={pIdx} className="matched-chip">
-                &ldquo;{phrase}&rdquo;
+                "{phrase}"
               </span>
             ))}
           </div>

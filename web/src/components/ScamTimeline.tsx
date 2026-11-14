@@ -72,7 +72,7 @@ export const ScamTimeline: React.FC<ScamTimelineProps> = ({
                 <div className="stepper-micro-chips">
                   {hitPhrases.map((phrase, pIdx) => (
                     <span key={pIdx} className="stepper-micro-chip">
-                      &ldquo;{phrase}&rdquo;
+                      "{phrase}"
                     </span>
                   ))}
                 </div>
